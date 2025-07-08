@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>🏆 Raos School Winners</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #f5f7fa, #c3cfe2);
+      margin: 0;
+      padding: 40px;
+      text-align: center;
+      overflow-x: hidden;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .header img {
+      width: 80px;
+      height: 80px;
+    }
+
+    h1 {
+      font-size: 38px;
+      color: #2c3e50;
+      margin: 0;
+    }
+
+    .banner {
+      font-size: 22px;
+      color: #34495e;
+      margin-bottom: 30px;
+    }
+
+    .grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .winner {
+      background: white;
+      padding: 20px;
+      margin: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      width: 250px;
+      opacity: 0;
+      transition: opacity 1s ease;
+    }
+
+    .winner.show {
+      opacity: 1;
+    }
+
+    .winner img {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 15px;
+      border: 5px solid gold;
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+    }
+
+    .winner h3 {
+      margin: 10px 0 5px;
+      color: #2c3e50;
+    }
+
+    .winner p {
+      margin: 0;
+      font-weight: bold;
+      color: #16a085;
+    }
+
+    .no-votes {
+      font-size: 24px;
+      color: red;
+      margin-top: 100px;
+    }
+
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+
+<audio id="bgMusic" loop>
+  <source src="audio/ding.mp3" type="audio/mpeg">
+</audio>
+
+<canvas id="confettiCanvas"></canvas>
+<canvas id="fireworkCanvas"></canvas>
+
+<div class="header">
+  <img src="images/raoslogo.png" alt="Raos Logo">
+  <h1>🏆 Raos School Winners</h1>
+</div>
+
+<p class="banner">Here are the most voted leaders of Raos School Election</p>
+<div class="grid" id="winnerContainer"></div>
+<p class="no-votes" id="noVotes" style="display: none;">No votes recorded yet.</p>
+
+<script>
+  const posts = {
+    headBoy: ["mustaba", "abdul", "samanvith_reddy"],
+    headGirl: ["summaya", "danushka", "keerthi"],
+    ccaBoy: ["rahul", "dharma"],
+    ccaGirl: ["ragini", "varshitha"],
+    akashCaptain: ["rajesh", "sita"],
+    akashVice: ["ram", "shiva"],
+    jalaCaptain: ["ravi", "siffu"],
+    jalaVice: ["vignesh", "raju"],
+    agniCaptain: ["teja", "siri"],
+    agniVice: ["kiat", "bowwly"],
+    prithviCaptain: ["ramu", "sithara"]
+  };
+
+  const readablePosts = {
+    headBoy: "Head Boy",
+    headGirl: "Head Girl",
+    ccaBoy: "CCA Boy",
+    ccaGirl: "CCA Girl",
+    akashCaptain: "Akash House Captain",
+    akashVice: "Akash House Vice Captain",
+    jalaCaptain: "Jala House Captain",
+    jalaVice: "Jala House Vice Captain",
+    agniCaptain: "Agni House Captain",
+    agniVice: "Agni House Vice Captain",
+    prithviCaptain: "Prithvi House Captain"
+  };
+
+  const votes = JSON.parse(localStorage.getItem("votes") || "[]");
+  const resultCounts = {};
+  const winners = {};
+
+  if (votes.length === 0) {
+    document.getElementById("noVotes").style.display = "block";
+  } else {
+    for (const post in posts) {
+      resultCounts[post] = {};
+      posts[post].forEach(name => resultCounts[post][name] = 0);
+    }
+
+    votes.forEach(vote => {
+      for (const post in vote) {
+        if (resultCounts[post] && resultCounts[post][vote[post]] !== undefined) {
+          resultCounts[post][vote[post]]++;
+        }
+      }
+    });
+
+    const container = document.getElementById("winnerContainer");
+
+    for (const post in resultCounts) {
+      const sorted = Object.entries(resultCounts[post]).sort((a, b) => b[1] - a[1]);
+      const topVotes = sorted[0][1];
+      const topCandidates = sorted.filter(entry => entry[1] === topVotes).map(entry => entry[0]);
+
+      winners[post] = topCandidates;
+
+      topCandidates.forEach(name => {
+        const card = document.createElement("div");
+        card.className = "winner";
+        card.id = `${post}-${name}`;
+        card.innerHTML = `
+          <img src="images/${name}.jpg" alt="${name}">
+          <h3>${capitalize(name)}</h3>
+          <p>${readablePosts[post]} ${topCandidates.length > 1 ? "(Tie)" : ""}</p>
+        `;
+        container.appendChild(card);
+      });
+    }
+  }
+
+  function capitalize(str) {
+    return str.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  }
+
+  // ✅ Click logic: 1st click = announce, 2nd click = redirect
+  let clickCount = 0;
+  window.addEventListener("click", () => {
+    clickCount++;
+
+    if (clickCount === 1) {
+      const music = document.getElementById("bgMusic");
+      if (music && music.paused) {
+        music.volume = 0.2;
+        music.play().catch(console.warn);
+      }
+
+      const synth = window.speechSynthesis;
+      const orderedPosts = Object.keys(readablePosts);
+      const intro = new SpeechSynthesisUtterance("And the winners are...");
+      synth.speak(intro);
+
+      let delay = 3000;
+      orderedPosts.forEach((post) => {
+        setTimeout(() => {
+          const names = winners[post]?.map(n => capitalize(n)).join(" and ") || "Not available";
+          const speechText = `${readablePosts[post]} ${winners[post]?.length > 1 ? "is a tie between" : "goes to"} ${names}`;
+          const utter = new SpeechSynthesisUtterance(speechText);
+          synth.speak(utter);
+
+          winners[post]?.forEach(name => {
+            const card = document.getElementById(`${post}-${name}`);
+            if (card) card.classList.add("show");
+          });
+        }, delay);
+        delay += 4000;
+      });
+    }
+
+    if (clickCount === 2) {
+      window.location.href = "exit.html";
+    }
+  });
+</script>
+
+<!-- Confetti -->
+<script>
+  const canvas = document.getElementById("confettiCanvas");
+  const ctx = canvas.getContext("2d");
+  let pieces = [];
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+
+  window.addEventListener("resize", resizeCanvas);
+  resizeCanvas();
+
+  for (let i = 0; i < 150; i++) {
+    pieces.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height - canvas.height,
+      radius: Math.random() * 6 + 4,
+      density: Math.random() * 30 + 10,
+      color: `hsl(${Math.random() * 360}, 70%, 60%)`,
+      tilt: Math.floor(Math.random() * 10) - 10
+    });
+  }
+
+  function drawConfetti() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.fill();
+    });
+
+    updateConfetti();
+    requestAnimationFrame(drawConfetti);
+  }
+
+  function updateConfetti() {
+    pieces.forEach(p => {
+      p.y += Math.cos(p.density) + 1 + p.radius / 2;
+      p.x += Math.sin(p.density);
+      if (p.y > canvas.height) {
+        p.y = -10;
+        p.x = Math.random() * canvas.width;
+      }
+    });
+  }
+
+  drawConfetti();
+</script>
+
+<!-- Fireworks -->
+<script>
+  const fireCanvas = document.getElementById("fireworkCanvas");
+  const fireCtx = fireCanvas.getContext("2d");
+
+  function resizeFireCanvas() {
+    fireCanvas.width = window.innerWidth;
+    fireCanvas.height = window.innerHeight;
+  }
+
+  resizeFireCanvas();
+  window.addEventListener("resize", resizeFireCanvas);
+
+  function random(min, max) {
+    return Math.random() * (max - min) + min;
+  }
+
+  let fireworks = [];
+
+  function createFirework() {
+    const x = random(100, fireCanvas.width - 100);
+    const y = fireCanvas.height;
+    const targetY = random(fireCanvas.height / 2 - 100, fireCanvas.height / 2);
+    fireworks.push({
+      x, y, targetY, radius: 3,
+      color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+      exploded: false,
+      particles: []
+    });
+  }
+
+  function updateFireworks() {
+    fireCtx.clearRect(0, 0, fireCanvas.width, fireCanvas.height);
+    fireworks.forEach(f => {
+      if (!f.exploded) {
+        f.y -= 5;
+        fireCtx.beginPath();
+        fireCtx.arc(f.x, f.y, f.radius, 0, Math.PI * 2);
+        fireCtx.fillStyle = f.color;
+        fireCtx.fill();
+
+        if (f.y <= f.targetY) {
+          f.exploded = true;
+          for (let j = 0; j < 30; j++) {
+            f.particles.push({
+              x: f.x,
+              y: f.y,
+              radius: 2,
+              color: f.color,
+              dx: random(-3, 3),
+              dy: random(-3, 3),
+              life: 100
+            });
+          }
+        }
+      } else {
+        f.particles.forEach(p => {
+          p.x += p.dx;
+          p.y += p.dy;
+          p.life--;
+          fireCtx.beginPath();
+          fireCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          fireCtx.fillStyle = p.color;
+          fireCtx.fill();
+        });
+        f.particles = f.particles.filter(p => p.life > 0);
+      }
+    });
+
+    fireworks = fireworks.filter(f => f.particles.length > 0 || !f.exploded);
+    if (Math.random() < 0.05) createFirework();
+    requestAnimationFrame(updateFireworks);
+  }
+
+  updateFireworks();
+</script>
+
+</body>
+</html>

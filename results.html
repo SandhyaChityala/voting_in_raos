@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Voting Results – Raos School</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to bottom right, #dbeafe, #f0fdf4);
+      margin: 0;
+      padding: 0 20px 60px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      padding: 30px 10px 10px;
+    }
+
+    .header img {
+      width: 60px;
+      height: 60px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #1e3a8a;
+      margin-bottom: 10px;
+    }
+
+    .post-section {
+      margin-top: 40px;
+    }
+
+    h2 {
+      text-align: center;
+      color: #2563eb;
+      font-size: 22px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #93c5fd;
+      display: inline-block;
+      padding-bottom: 5px;
+    }
+
+    .candidates {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+    }
+
+    .candidate {
+      width: 180px;
+      padding: 15px;
+      background: #ffffff;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      text-align: center;
+      transition: transform 0.3s ease;
+    }
+
+    .candidate:hover {
+      transform: scale(1.05);
+    }
+
+    .candidate img {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 10px;
+      border: 3px solid #60a5fa;
+    }
+
+    .candidate strong {
+      display: block;
+      font-size: 16px;
+      margin-bottom: 8px;
+      color: #111827;
+    }
+
+    .vote-count {
+      font-size: 18px;
+      color: #22c55e;
+      font-weight: bold;
+    }
+
+    .actions {
+      text-align: center;
+      margin-top: 30px;
+    }
+
+    .actions button {
+      background-color: #3b82f6;
+      color: white;
+      padding: 12px 25px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      margin: 10px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .actions button:hover {
+      background-color: #2563eb;
+    }
+
+    .error {
+      text-align: center;
+      margin-top: 100px;
+      color: red;
+      font-size: 20px;
+    }
+
+    .error button {
+      margin-top: 20px;
+      background-color: #ef4444;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .error button:hover {
+      background-color: #dc2626;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <img src="images/raoslogo.png" alt="School Logo" />
+  <h1>🗳️ Raos School Voting Results</h1>
+</div>
+
+<div id="resultsContainer"></div>
+
+<div class="actions" id="actions" style="display: none;">
+  <button onclick="downloadCSV()">📥 Download CSV</button>
+  <button onclick="resetVotes()">🧹 Reset All Votes</button>
+  <button onclick="window.location.href='winners.html'">🏆 View Winners</button>
+</div>
+
+<script>
+  function checkPasswordAndLoad() {
+    const password = prompt("Enter Teacher Password to View Results:");
+    if (password !== "raos@123") {
+      document.body.innerHTML = `
+        <div class="error">
+          <h1>😢 Oops! Access Denied</h1>
+          <p>Incorrect password. Please try again with the correct password.</p>
+          <button onclick="location.reload()">🔁 Try Again</button>
+        </div>`;
+      return;
+    }
+
+    document.getElementById("actions").style.display = "block";
+    loadVotingResults();
+  }
+
+  checkPasswordAndLoad();
+
+  function loadVotingResults() {
+    const posts = {
+      headBoy: ["mustaba", "abdul", "samanvith_reddy"],
+      headGirl: ["summaya", "danushka", "keerthi"],
+      ccaBoy: ["rahul", "dharma"],
+      ccaGirl: ["ragini", "varshitha"],
+      akashCaptain: ["rajesh", "sita"],
+      akashVice: ["ram", "shiva"],
+      jalaCaptain: ["ravi", "siffu"],
+      jalaVice: ["vignesh", "raju"],
+      agniCaptain: ["teja", "siri"],
+      agniVice: ["kiat", "bowwly"],
+      prithviCaptain: ["ramu", "sithara"]
+    };
+
+    const votes = JSON.parse(localStorage.getItem("votes") || "[]");
+    const resultCounts = {};
+
+    for (const post in posts) {
+      resultCounts[post] = {};
+      posts[post].forEach(name => resultCounts[post][name] = 0);
+    }
+
+    votes.forEach(vote => {
+      for (const post in vote) {
+        if (post !== "timestamp" && resultCounts[post][vote[post]] !== undefined) {
+          resultCounts[post][vote[post]]++;
+        }
+      }
+    });
+
+    const container = document.getElementById("resultsContainer");
+
+    for (const post in resultCounts) {
+      const section = document.createElement("div");
+      section.className = "post-section";
+      section.innerHTML = `<h2>${formatTitle(post)}</h2><div class="candidates" id="${post}-list"></div>`;
+      container.appendChild(section);
+
+      const list = section.querySelector(".candidates");
+      const sorted = Object.entries(resultCounts[post]).sort((a, b) => b[1] - a[1]);
+
+      sorted.forEach(([name, count]) => {
+        const card = document.createElement("div");
+        card.className = "candidate";
+        card.innerHTML = `
+          <img src="images/${name}.jpg" alt="${name}">
+          <strong>${capitalize(name)}</strong>
+          <div class="vote-count">${count} vote(s)</div>
+        `;
+        list.appendChild(card);
+      });
+    }
+  }
+
+  function formatTitle(str) {
+    return str.replace(/([A-Z])/g, ' $1').replace(/^./, ch => ch.toUpperCase());
+  }
+
+  function capitalize(str) {
+    return str.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  }
+
+  function downloadCSV() {
+    let csv = "Timestamp,Post,Candidate\n";
+    const votes = JSON.parse(localStorage.getItem("votes") || "[]");
+    votes.forEach(vote => {
+      const time = vote.timestamp || "N/A";
+      for (const post in vote) {
+        if (post !== "timestamp" && vote[post]) {
+          csv += `"${time}","${formatTitle(post)}","${capitalize(vote[post])}"\n`;
+        }
+      }
+    });
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "voting_results_with_timestamp.csv";
+    a.click();
+  }
+
+  function resetVotes() {
+    if (confirm("Are you sure you want to clear all votes? This cannot be undone.")) {
+      localStorage.removeItem("votes");
+      alert("✅ All votes cleared.");
+      window.location.reload();
+    }
+  }
+</script>
+
+</body>
+</html>
